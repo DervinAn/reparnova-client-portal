@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CircleAlert, QrCode, Search, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, QrCode, Search, ShieldCheck, Sparkles } from "lucide-react";
 
 import { RepairCodeField } from "@/components/repair-code-field";
 import { cn } from "@/lib/utils";
@@ -166,15 +166,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="rounded-[2rem] border border-amber-400/20 bg-amber-400/10 p-6 text-amber-50">
-              <div className="flex items-center gap-3">
-                <CircleAlert className="h-5 w-5" />
-                <p className="font-semibold">Ready for connection</p>
-              </div>
-              <p className="mt-3 text-sm leading-6 text-amber-50/90">
-                This project is scaffolded for React + Tailwind CSS and can be connected to your online repair database/API when you’re ready.
-              </p>
-            </div>
           </aside>
         </div>
       </section>

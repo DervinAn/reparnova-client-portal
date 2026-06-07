@@ -147,8 +147,8 @@ export function RepairCodeField({
     }
   }
 
-  function handleDetected(rawValue: string) {
-    const normalized = rawValue.trim().toUpperCase();
+function handleDetected(rawValue: string) {
+    const normalized = normalizeScannedCode(rawValue);
     if (!normalized) {
       return;
     }
@@ -198,6 +198,30 @@ export function RepairCodeField({
     }
 
     handleDetected(result.data);
+  }
+
+  function normalizeScannedCode(rawValue: string): string {
+    const trimmed = rawValue.trim();
+    if (!trimmed) {
+      return "";
+    }
+
+    try {
+      const url = new URL(trimmed);
+      const codeParam = url.searchParams.get("code")?.trim();
+      if (codeParam) {
+        return codeParam.toUpperCase();
+      }
+
+      const segments = url.pathname.split("/").filter(Boolean);
+      if (segments.length > 0) {
+        return segments[segments.length - 1].toUpperCase();
+      }
+    } catch {
+      // Not a URL, fall through to raw code handling.
+    }
+
+    return trimmed.toUpperCase();
   }
 
   return (
