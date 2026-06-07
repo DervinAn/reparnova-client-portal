@@ -13,6 +13,7 @@ import {
   UserRound,
 } from "lucide-react";
 
+import { RepairCodeField } from "@/components/repair-code-field";
 import { cn } from "@/lib/utils";
 import { fetchRepairByCode, type RepairTrackingRecord } from "@/lib/repair-tracking";
 
@@ -58,7 +59,7 @@ function labelize(status: string): string {
 
 const sampleRepair: RepairTrackingRecord = {
   id: "20481",
-  trackingCode: "RP-12AB34CD56EF",
+  trackingCode: "SAMPLE-REPAIR-001",
   customerName: "Ahmed B.",
   deviceModel: "iPhone 13 Pro",
   currentStatus: "IN_PROGRESS",
@@ -73,7 +74,7 @@ const sampleRepair: RepairTrackingRecord = {
 };
 
 export default function RepairTrackingPage() {
-  const [code, setCode] = useState("RP-12AB34CD56EF");
+  const [code, setCode] = useState("");
   const [record, setRecord] = useState<RepairTrackingRecord | null>(null);
   const [state, setState] = useState<LoadState>("idle");
   const [error, setError] = useState("");
@@ -125,7 +126,7 @@ export default function RepairTrackingPage() {
       return;
     }
 
-    setRecord(sampleRepair);
+    setRecord(null);
     setState("idle");
   }, []);
 
@@ -163,15 +164,12 @@ export default function RepairTrackingPage() {
 
                 <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <div className="flex-1">
-                    <label htmlFor="repair-code" className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                      Repair code
-                    </label>
-                    <input
-                      id="repair-code"
+                    <RepairCodeField
                       value={code}
-                      onChange={(event) => setCode(event.target.value.toUpperCase())}
-                      placeholder="RP-12AB34CD56EF"
-                      className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
+                      onChange={setCode}
+                      onScan={(scannedCode) => void lookup(scannedCode)}
+                      placeholder="Enter repair code"
+                      showLabel={true}
                     />
                   </div>
 

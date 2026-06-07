@@ -3,6 +3,8 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CircleAlert, QrCode, Search, ShieldCheck, Sparkles } from "lucide-react";
+
+import { RepairCodeField } from "@/components/repair-code-field";
 import { cn } from "@/lib/utils";
 
 const sampleTimeline = [
@@ -26,7 +28,7 @@ function StatusPill({ text, tone }: { text: string; tone: string }) {
 
 export default function HomePage() {
   const router = useRouter();
-  const [repairCode, setRepairCode] = useState("RP-12AB34CD56EF");
+  const [repairCode, setRepairCode] = useState("");
 
   function handleTrackRepair(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -101,17 +103,16 @@ export default function HomePage() {
               </div>
 
               <form onSubmit={handleTrackRepair} className="mt-8 flex flex-col gap-3 rounded-[1.5rem] border border-white/10 bg-slate-950/55 p-4 sm:flex-row sm:items-end">
-                <label className="flex-1">
-                  <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-                    Repair code
-                  </span>
-                  <input
-                    placeholder="RP-12AB34CD56EF"
+                <div className="flex-1">
+                  <RepairCodeField
                     value={repairCode}
-                    onChange={(event) => setRepairCode(event.target.value.toUpperCase())}
-                    className="w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/60 focus:ring-2 focus:ring-sky-400/20"
+                    onChange={setRepairCode}
+                    onScan={(code) => router.push(`/repair-tracking?code=${encodeURIComponent(code)}`)}
+                    placeholder="Enter repair code"
+                    label="Repair code"
+                    showLabel={false}
                   />
-                </label>
+                </div>
                 <button
                   type="submit"
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
@@ -135,7 +136,7 @@ export default function HomePage() {
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <MiniStat label="Customer" value="Ahmed B." />
-                <MiniStat label="Code" value="RP-12AB34CD56EF" mono />
+                <MiniStat label="Code" value="Unique per repair" mono />
                 <MiniStat label="Last update" value="Today, 11:20" />
                 <MiniStat label="Repair #" value="#20481" />
               </div>

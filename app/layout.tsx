@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ReparNova Client Tracking",
-  description: "Client-facing repair tracking site for QR code access.",
+  title: "ReparNova Track",
+  description: "Client-facing repair tracking portal for QR code access.",
 };
 
 export default function RootLayout({
