@@ -2,7 +2,6 @@
 
 import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  ArrowRight,
   Clock3,
   Loader2,
   Package2,
@@ -13,13 +12,16 @@ import {
   UserRound,
 } from "lucide-react";
 
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useLocale } from "@/components/locale-provider";
 import { RepairCodeField } from "@/components/repair-code-field";
-import { cn } from "@/lib/utils";
 import { fetchRepairByCode, type RepairTrackingRecord } from "@/lib/repair-tracking";
+import { cn } from "@/lib/utils";
+import { formatTrackText, getStatusLabel, languageLocale, type Language, translations } from "@/lib/i18n";
 
 type LoadState = "idle" | "loading" | "ready" | "missing" | "unconfigured" | "error";
 
-function formatMoment(value: string): string {
+function formatMoment(value: string, locale: string): string {
   if (!value) return "Unavailable";
 
   const parsed = Date.parse(value.replace(" ", "T"));
@@ -27,7 +29,7 @@ function formatMoment(value: string): string {
     return value;
   }
 
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(parsed));
@@ -47,44 +49,39 @@ function statusTone(status: string): string {
   return "border-slate-500/40 bg-slate-500/10 text-slate-100";
 }
 
-function labelize(status: string): string {
-  return status
-    .trim()
-    .toLowerCase()
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part[0].toUpperCase() + part.slice(1))
-    .join(" ");
+function buildSampleRepair(language: Language): RepairTrackingRecord {
+  const copy = translations[language];
+  return {
+    id: "20481",
+    trackingCode: "SAMPLE-REPAIR-001",
+    customerName: "Ahmed B.",
+    deviceModel: "iPhone 13 Pro",
+    currentStatus: "IN_PROGRESS",
+    createdAt: "2026-06-07 10:15",
+    lastUpdatedAt: "2026-06-07 11:20",
+    phone: "+213 555 000 000",
+    timeline: [
+      { status: "RECEIVED", changedAt: "2026-06-07 10:15", note: copy.sampleTimeline[0].note },
+      { status: "DIAGNOSING", changedAt: "2026-06-07 11:20", note: copy.sampleTimeline[1].note },
+      { status: "WAITING_PARTS", changedAt: "2026-06-07 12:05", note: copy.sampleTimeline[2].note },
+    ],
+  };
 }
-
-const sampleRepair: RepairTrackingRecord = {
-  id: "20481",
-  trackingCode: "SAMPLE-REPAIR-001",
-  customerName: "Ahmed B.",
-  deviceModel: "iPhone 13 Pro",
-  currentStatus: "IN_PROGRESS",
-  createdAt: "2026-06-07 10:15",
-  lastUpdatedAt: "2026-06-07 11:20",
-  phone: "+213 555 000 000",
-  timeline: [
-    { status: "RECEIVED", changedAt: "2026-06-07 10:15", note: "Device checked in at the counter." },
-    { status: "DIAGNOSING", changedAt: "2026-06-07 11:20", note: "Technician is confirming the fault." },
-    { status: "WAITING_PARTS", changedAt: "2026-06-07 12:05", note: "Parts are being prepared for replacement." },
-  ],
-};
 
 export default function RepairTrackingPage() {
   const [code, setCode] = useState("");
   const [record, setRecord] = useState<RepairTrackingRecord | null>(null);
   const [state, setState] = useState<LoadState>("idle");
   const [error, setError] = useState("");
+  const { language, isReady } = useLocale();
+  const t = translations[language];
 
   async function lookup(nextCode: string) {
     const normalized = nextCode.trim().toUpperCase();
     if (!normalized) {
       setState("missing");
       setRecord(null);
-      setError("Enter a repair code to continue.");
+      setError(t.publicTrackingErrorEnterCode);
       return;
     }
 
@@ -101,23 +98,27 @@ export default function RepairTrackingPage() {
     if (result.kind === "missing") {
       setRecord(null);
       setState("missing");
-      setError(result.message);
+      setError(t.publicTrackingErrorNoRepair);
       return;
     }
 
     if (result.kind === "unconfigured") {
-      setRecord(sampleRepair);
+      setRecord(buildSampleRepair(language));
       setState("unconfigured");
-      setError(result.message);
+      setError(t.publicTrackingErrorFirebaseUnconfigured);
       return;
     }
 
-    setRecord(sampleRepair);
+    setRecord(buildSampleRepair(language));
     setState("error");
-    setError(result.message);
+    setError(t.publicTrackingErrorLoadFailure);
   }
 
   useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+
     const url = new URL(window.location.href);
     const initialCode = url.searchParams.get("code")?.trim().toUpperCase() ?? "";
     if (initialCode) {
@@ -128,11 +129,15 @@ export default function RepairTrackingPage() {
 
     setRecord(null);
     setState("idle");
-  }, []);
+  }, [isReady]);
 
   const lastUpdated = useMemo(() => {
-    return record ? formatMoment(record.lastUpdatedAt || record.createdAt) : "";
-  }, [record]);
+    return record ? formatMoment(record.lastUpdatedAt || record.createdAt, languageLocale[language]) : "";
+  }, [language, record]);
+
+  const timelineUpdatesLabel = record
+    ? `${record.timeline.length} ${record.timeline.length === 1 ? t.publicTrackingUpdates : t.publicTrackingUpdatesPlural}`
+    : "";
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -149,18 +154,22 @@ export default function RepairTrackingPage() {
               <div className="relative">
                 <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
                   <QrCode className="h-3.5 w-3.5" />
-                  Public repair tracking
+                  {t.publicTrackingBadge}
                 </div>
 
                 <h1 className="mt-5 max-w-xl text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
-                  Scan the QR code or enter the repair code to follow the phone&apos;s progress.
+                  {t.publicTrackingTitle}
                 </h1>
                 <p className="mt-2 max-w-2xl text-xs uppercase tracking-[0.2em] text-slate-400">
-                  The QR opens this page and the repair code below can be typed manually.
+                  {t.publicTrackingDescription}
                 </p>
                 <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-                  This page reads live repair data from Firebase Firestore when your Firebase config is set. If it is not configured yet, the page shows a sample repair preview so you can see the layout.
+                  {t.publicTrackingFirebaseNote}
                 </p>
+
+                <div className="mt-4 flex justify-start">
+                  <LanguageSwitcher />
+                </div>
 
                 <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <div className="flex-1">
@@ -168,8 +177,25 @@ export default function RepairTrackingPage() {
                       value={code}
                       onChange={setCode}
                       onScan={(scannedCode) => void lookup(scannedCode)}
-                      placeholder="Enter repair code"
+                      placeholder={t.publicTrackingPlaceholder}
+                      label={t.repairCodeLabel}
                       showLabel={true}
+                      text={{
+                        scanButtonLabel: t.scanRepairCode,
+                        modalTitle: t.scanRepairCode,
+                        modalSubtitle: t.scanRepairCodeHint,
+                        closeScannerLabel: t.closingScanner,
+                        cameraUnsupported: t.scannerCameraUnsupported,
+                        previewUnavailable: t.scannerPreviewUnavailable,
+                        couldNotStartCamera: t.scannerCouldNotStart,
+                        couldNotScanImage: t.scannerCouldNotScanImage,
+                        noQrDetected: t.scannerNoQrDetected,
+                        imageReadError: t.scannerImageReadError,
+                        imageLoadError: t.scannerImageLoadError,
+                        prepareImageError: t.scannerPrepareImageError,
+                        openingCamera: t.scannerOpening,
+                        hint: t.scannerHint,
+                      }}
                     />
                   </div>
 
@@ -178,14 +204,14 @@ export default function RepairTrackingPage() {
                     className="mt-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-sky-500 px-5 py-4 text-sm font-semibold text-white transition hover:bg-sky-400"
                   >
                     <Search className="h-4 w-4" />
-                    Track repair
+                    {t.publicTrackingButton}
                   </button>
                 </form>
 
                 {state === "loading" ? (
                   <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-4 py-2 text-sm text-sky-100">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading repair status...
+                    {t.publicTrackingLoading}
                   </div>
                 ) : null}
 
@@ -209,39 +235,39 @@ export default function RepairTrackingPage() {
                     <Smartphone className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Live overview</p>
-                    <p className="text-lg font-semibold text-white">Repair progress</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t.publicTrackingLiveOverview}</p>
+                    <p className="text-lg font-semibold text-white">{t.publicTrackingProgress}</p>
                   </div>
                 </div>
 
                 {record ? (
                   <div className="mt-6 space-y-4">
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <InfoTile icon={<UserRound className="h-4 w-4" />} label="Customer" value={record.customerName} />
-                      <InfoTile icon={<Package2 className="h-4 w-4" />} label="Device" value={record.deviceModel} />
-                      <InfoTile icon={<QrCode className="h-4 w-4" />} label="Code" value={record.trackingCode} mono />
-                      <InfoTile icon={<Clock3 className="h-4 w-4" />} label="Last update" value={lastUpdated} />
+                      <InfoTile icon={<UserRound className="h-4 w-4" />} label={t.publicTrackingCustomer} value={record.customerName} />
+                      <InfoTile icon={<Package2 className="h-4 w-4" />} label={t.publicTrackingDevice} value={record.deviceModel} />
+                      <InfoTile icon={<QrCode className="h-4 w-4" />} label={t.publicTrackingCode} value={record.trackingCode} mono />
+                      <InfoTile icon={<Clock3 className="h-4 w-4" />} label={t.publicTrackingLastUpdate} value={lastUpdated} />
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Current status</p>
-                          <p className="mt-1 text-xl font-semibold text-white">{labelize(record.currentStatus)}</p>
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t.publicTrackingCurrentStatus}</p>
+                          <p className="mt-1 text-xl font-semibold text-white">{getStatusLabel(record.currentStatus, language)}</p>
                         </div>
                         <span className={cn("rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]", statusTone(record.currentStatus))}>
-                          {record.currentStatus}
+                          {getStatusLabel(record.currentStatus, language)}
                         </span>
                       </div>
                       <div className="mt-4 text-sm text-slate-300">
-                        Repair #{record.id} is being tracked with code <span className="font-semibold text-white">{record.trackingCode}</span>.
+                        {formatTrackText(t.publicTrackingRepairLine, { id: record.id, code: record.trackingCode })}
                       </div>
                     </div>
 
                     <div>
                       <div className="mb-3 flex items-center justify-between">
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Status history</p>
-                        <p className="text-xs text-slate-400">{record.timeline.length} update{record.timeline.length === 1 ? "" : "s"}</p>
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t.publicTrackingHistory}</p>
+                        <p className="text-xs text-slate-400">{timelineUpdatesLabel}</p>
                       </div>
 
                       <div className="space-y-3">
@@ -253,9 +279,9 @@ export default function RepairTrackingPage() {
                               </div>
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <p className="font-semibold text-white">{labelize(event.status)}</p>
+                                  <p className="font-semibold text-white">{getStatusLabel(event.status, language)}</p>
                                   <span className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] uppercase tracking-[0.16em] text-slate-300">
-                                    {formatMoment(event.changedAt)}
+                                    {formatMoment(event.changedAt, languageLocale[language])}
                                   </span>
                                 </div>
                                 {event.note ? <p className="mt-1 text-sm text-slate-300">{event.note}</p> : null}
@@ -265,7 +291,7 @@ export default function RepairTrackingPage() {
                           ))
                         ) : (
                           <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-5 text-sm text-slate-300">
-                            No timeline updates have been published yet.
+                            {t.publicTrackingNoHistory}
                           </div>
                         )}
                       </div>
@@ -273,7 +299,7 @@ export default function RepairTrackingPage() {
                   </div>
                 ) : (
                   <div className="mt-6 rounded-[1.25rem] border border-dashed border-white/10 bg-white/[0.03] p-6 text-sm leading-6 text-slate-300">
-                    Enter the repair code from the receipt to see the current repair stage, history, and the most recent update time.
+                    {t.publicTrackingEmpty}
                   </div>
                 )}
               </div>

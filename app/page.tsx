@@ -4,14 +4,11 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, QrCode, Search, ShieldCheck, Sparkles } from "lucide-react";
 
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useLocale } from "@/components/locale-provider";
 import { RepairCodeField } from "@/components/repair-code-field";
+import { translations } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-
-const sampleTimeline = [
-  { stage: "Received", time: "10:15 AM", note: "Device checked in at the counter." },
-  { stage: "Diagnosing", time: "11:20 AM", note: "Technician is confirming the fault." },
-  { stage: "Waiting parts", time: "Today", note: "Parts are being prepared for replacement." },
-];
 
 function StatusPill({ text, tone }: { text: string; tone: string }) {
   return (
@@ -29,6 +26,8 @@ function StatusPill({ text, tone }: { text: string; tone: string }) {
 export default function HomePage() {
   const router = useRouter();
   const [repairCode, setRepairCode] = useState("");
+  const { language, isRTL } = useLocale();
+  const t = translations[language];
 
   function handleTrackRepair(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,24 +39,27 @@ export default function HomePage() {
   return (
     <main className="min-h-screen">
       <section className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-full border border-white/10 bg-white/5 px-5 py-4 shadow-glow backdrop-blur">
-          <div className="flex items-center gap-3">
+        <header className="flex flex-col gap-4 rounded-[1.75rem] border border-white/10 bg-white/5 px-4 py-4 shadow-glow backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:rounded-full sm:px-5">
+          <div className="flex items-center justify-between gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-400/15 text-sky-200">
               <Sparkles className="h-5 w-5" />
             </div>
-            <div>
-              <p className="text-sm font-semibold text-white">ReparNova Client</p>
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Repair progress portal</p>
+            <div className={cn("min-w-0", isRTL && "text-right")}>
+              <p className="text-sm font-semibold text-white">{t.appName}</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{t.appTagline}</p>
             </div>
           </div>
 
-          <a
-            href="#track"
-            className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
-          >
-            Track a repair
-            <ArrowRight className="h-4 w-4" />
-          </a>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <LanguageSwitcher />
+            <a
+              href="#track"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-4 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20 sm:w-auto sm:py-2"
+            >
+              {t.trackRepair}
+              <ArrowRight className={cn("h-4 w-4", isRTL && "rotate-180")} />
+            </a>
+          </div>
         </header>
 
         <div className="grid flex-1 items-center gap-8 py-8 lg:grid-cols-[1.15fr_0.85fr] lg:py-10">
@@ -67,13 +69,13 @@ export default function HomePage() {
             <div className="absolute right-4 top-16 h-36 w-36 rounded-full bg-amber-300/10 blur-3xl animate-floaty [animation-delay:1.2s]" />
 
             <div className="relative">
-              <StatusPill text="Client facing" tone="border-sky-400/30 bg-sky-400/10 text-sky-100" />
+              <StatusPill text={t.clientFacing} tone="border-sky-400/30 bg-sky-400/10 text-sky-100" />
 
               <h1 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
-                Scan the receipt QR code and see exactly where the phone repair stands.
+                {t.heroTitle}
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-                This web app is designed for customers. It lets them scan the QR code printed on the repair receipt or type the repair code manually to follow the status, timeline, and last update.
+                {t.heroDescription}
               </p>
 
               <div id="track" className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -83,8 +85,8 @@ export default function HomePage() {
                       <QrCode className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-white">Scan QR</p>
-                      <p className="text-sm text-slate-400">Opens the repair page directly</p>
+                      <p className="text-sm font-semibold text-white">{t.scanQr}</p>
+                      <p className="text-sm text-slate-400">{t.scanQrDescription}</p>
                     </div>
                   </div>
                 </div>
@@ -95,8 +97,8 @@ export default function HomePage() {
                       <Search className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-white">Type code</p>
-                      <p className="text-sm text-slate-400">Manual lookup for any customer</p>
+                      <p className="text-sm font-semibold text-white">{t.typeCode}</p>
+                      <p className="text-sm text-slate-400">{t.typeCodeDescription}</p>
                     </div>
                   </div>
                 </div>
@@ -108,17 +110,33 @@ export default function HomePage() {
                     value={repairCode}
                     onChange={setRepairCode}
                     onScan={(code) => router.push(`/repair-tracking?code=${encodeURIComponent(code)}`)}
-                    placeholder="Enter repair code"
-                    label="Repair code"
+                    placeholder={t.repairCodePlaceholder}
+                    label={t.repairCodeLabel}
                     showLabel={false}
+                    text={{
+                      scanButtonLabel: t.scanRepairCode,
+                      modalTitle: t.scanRepairCode,
+                      modalSubtitle: t.scanRepairCodeHint,
+                      closeScannerLabel: t.closingScanner,
+                      cameraUnsupported: t.scannerCameraUnsupported,
+                      previewUnavailable: t.scannerPreviewUnavailable,
+                      couldNotStartCamera: t.scannerCouldNotStart,
+                      couldNotScanImage: t.scannerCouldNotScanImage,
+                      noQrDetected: t.scannerNoQrDetected,
+                      imageReadError: t.scannerImageReadError,
+                      imageLoadError: t.scannerImageLoadError,
+                      prepareImageError: t.scannerPrepareImageError,
+                      openingCamera: t.scannerOpening,
+                      hint: t.scannerHint,
+                    }}
                   />
                 </div>
                 <button
                   type="submit"
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
                 >
-                  Track repair
-                  <ArrowRight className="h-4 w-4" />
+                  {t.trackRepairButton}
+                  <ArrowRight className={cn("h-4 w-4", isRTL && "rotate-180")} />
                 </button>
               </form>
             </div>
@@ -128,36 +146,35 @@ export default function HomePage() {
             <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,23,40,0.95),rgba(6,12,22,0.95))] p-6 shadow-glow">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Example repair</p>
+                  <p className="text-xs uppercase tracking-[0.22em] text-slate-400">{t.exampleRepair}</p>
                   <h2 className="mt-2 text-2xl font-semibold text-white">iPhone 13 Pro</h2>
                 </div>
-                <StatusPill text="In progress" tone="border-sky-400/30 bg-sky-500/10 text-sky-100" />
+                <StatusPill text={t.inProgress} tone="border-sky-400/30 bg-sky-500/10 text-sky-100" />
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <MiniStat label="Customer" value="Ahmed B." />
-                <MiniStat label="Code" value="Unique per repair" mono />
-                <MiniStat label="Last update" value="Today, 11:20" />
-                <MiniStat label="Repair #" value="#20481" />
+                <MiniStat label={t.customer} value="Ahmed B." />
+                <MiniStat label={t.code} value={t.uniquePerRepair} mono />
+                <MiniStat label={t.lastUpdate} value={t.exampleLastUpdate} />
+                <MiniStat label={t.repairNumber} value="#20481" />
               </div>
 
               <div className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-4">
                 <div className="flex items-start gap-3">
                   <ShieldCheck className="mt-1 h-5 w-5 text-emerald-300" />
                   <div>
-                    <p className="font-semibold text-white">Timeline preview</p>
+                    <p className="font-semibold text-white">{t.timelinePreview}</p>
                     <p className="mt-1 text-sm text-slate-300">
-                      The final website can show the repair history published by the admin side.
+                      {t.timelinePreviewDescription}
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-4 space-y-3">
-                  {sampleTimeline.map((item) => (
+                  {t.sampleTimeline.map((item) => (
                     <div key={item.stage} className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-sm font-semibold text-white">{item.stage}</p>
-                        <span className="text-xs uppercase tracking-[0.18em] text-slate-500">{item.time}</span>
                       </div>
                       <p className="mt-1 text-sm text-slate-300">{item.note}</p>
                     </div>

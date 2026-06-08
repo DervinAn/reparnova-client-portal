@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { Camera, Loader2, ScanLine, X } from "lucide-react";
 
+import { useLocale } from "@/components/locale-provider";
+import { translations } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 type RepairCodeFieldProps = {
@@ -14,6 +16,22 @@ type RepairCodeFieldProps = {
   label?: string;
   showLabel?: boolean;
   className?: string;
+  text?: Partial<{
+    scanButtonLabel: string;
+    modalTitle: string;
+    modalSubtitle: string;
+    closeScannerLabel: string;
+    cameraUnsupported: string;
+    previewUnavailable: string;
+    couldNotStartCamera: string;
+    couldNotScanImage: string;
+    noQrDetected: string;
+    imageReadError: string;
+    imageLoadError: string;
+    prepareImageError: string;
+    openingCamera: string;
+    hint: string;
+  }>;
 };
 
 export function RepairCodeField({
@@ -24,7 +42,26 @@ export function RepairCodeField({
   label = "Repair code",
   showLabel = true,
   className,
+  text,
 }: RepairCodeFieldProps) {
+  const { language } = useLocale();
+  const copy = {
+    scanButtonLabel: translations[language].scanRepairCode,
+    modalTitle: translations[language].scanRepairCode,
+    modalSubtitle: translations[language].scanRepairCodeHint,
+    closeScannerLabel: translations[language].closingScanner,
+    cameraUnsupported: translations[language].scannerCameraUnsupported,
+    previewUnavailable: translations[language].scannerPreviewUnavailable,
+    couldNotStartCamera: translations[language].scannerCouldNotStart,
+    couldNotScanImage: translations[language].scannerCouldNotScanImage,
+    noQrDetected: translations[language].scannerNoQrDetected,
+    imageReadError: translations[language].scannerImageReadError,
+    imageLoadError: translations[language].scannerImageLoadError,
+    prepareImageError: translations[language].scannerPrepareImageError,
+    openingCamera: translations[language].scannerOpening,
+    hint: translations[language].scannerHint,
+    ...text,
+  };
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -48,7 +85,7 @@ export function RepairCodeField({
 
       try {
         if (!navigator.mediaDevices?.getUserMedia) {
-          throw new Error("Camera access is not supported in this browser.");
+          throw new Error(copy.cameraUnsupported);
         }
 
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -68,7 +105,7 @@ export function RepairCodeField({
 
         const video = videoRef.current;
         if (!video) {
-          throw new Error("Scanner preview is unavailable.");
+          throw new Error(copy.previewUnavailable);
         }
 
         video.srcObject = stream;
@@ -109,7 +146,7 @@ export function RepairCodeField({
 
         rafRef.current = window.requestAnimationFrame(scanFrame);
       } catch (error) {
-        setScannerError(error instanceof Error ? error.message : "Could not start the camera.");
+        setScannerError(error instanceof Error ? error.message : copy.couldNotStartCamera);
       } finally {
         setIsStarting(false);
       }
@@ -167,21 +204,21 @@ function handleDetected(rawValue: string) {
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result ?? ""));
-      reader.onerror = () => reject(new Error("Could not read the selected image."));
+      reader.onerror = () => reject(new Error(copy.imageReadError));
       reader.readAsDataURL(file);
     });
 
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image();
       img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Could not load the selected image."));
+      img.onerror = () => reject(new Error(copy.imageLoadError));
       img.src = dataUrl;
     });
 
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
     if (!context) {
-      throw new Error("Could not prepare the image for scanning.");
+      throw new Error(copy.prepareImageError);
     }
 
     canvas.width = image.naturalWidth;
@@ -194,7 +231,7 @@ function handleDetected(rawValue: string) {
     });
 
     if (!result?.data) {
-      throw new Error("No QR code was detected in that image.");
+      throw new Error(copy.noQrDetected);
     }
 
     handleDetected(result.data);
@@ -252,7 +289,7 @@ function handleDetected(rawValue: string) {
             fileInputRef.current?.click();
           }}
           className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-xl border border-white/10 bg-sky-500/15 p-3 text-sky-100 transition hover:bg-sky-500/25"
-          aria-label="Scan repair code"
+          aria-label={copy.scanButtonLabel}
         >
           <ScanLine className="h-4 w-4" />
         </button>
@@ -274,7 +311,7 @@ function handleDetected(rawValue: string) {
             try {
               await decodeFile(file);
             } catch (error) {
-              setScannerError(error instanceof Error ? error.message : "Could not scan that image.");
+              setScannerError(error instanceof Error ? error.message : copy.couldNotScanImage);
             }
           }}
         />
@@ -284,15 +321,15 @@ function handleDetected(rawValue: string) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950 shadow-[0_24px_120px_rgba(0,0,0,0.55)]">
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-500/15 text-sky-100">
-                  <Camera className="h-5 w-5" />
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-500/15 text-sky-100">
+                    <Camera className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">{copy.modalTitle}</p>
+                    <p className="text-xs text-slate-400">{copy.modalSubtitle}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Scan repair code</p>
-                  <p className="text-xs text-slate-400">Point the camera at the QR code</p>
-                </div>
-              </div>
 
               <button
                 type="button"
@@ -301,7 +338,7 @@ function handleDetected(rawValue: string) {
                   stopScanner();
                 }}
                 className="rounded-full border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:bg-white/10 hover:text-white"
-                aria-label="Close scanner"
+                aria-label={copy.closeScannerLabel}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -323,12 +360,12 @@ function handleDetected(rawValue: string) {
               {isStarting ? (
                 <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-4 py-2 text-sm text-sky-100">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Opening camera...
+                  {copy.openingCamera}
                 </div>
               ) : null}
 
               <p className="mt-4 text-sm leading-6 text-slate-300">
-                The scanner will fill the code automatically once it detects the QR code.
+                {copy.hint}
               </p>
             </div>
           </div>
